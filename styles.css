@@ -60,3 +60,43 @@ body {
     border: 1px solid #e2e8f0; border-radius: 8px; max-width: 420px;
   }
 }
+
+/* ---------- Posisi pengguna ---------- */
+.user-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #dc2626;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, .35), 0 2px 8px rgba(15, 23, 42, .35);
+  cursor: default;
+}
+.user-dot::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(220, 38, 38, .45);
+}
+.locate-info {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #1e3a8a;
+}
+.locate-info.error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+.controls button#locate-btn.active {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+.controls button:disabled {
+  opacity: .6;
+  cursor: progress;
+}

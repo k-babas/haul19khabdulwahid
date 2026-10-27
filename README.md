@@ -75,6 +75,35 @@ Duplikat satu blok di array `routes`, lalu ganti `id`, `vehicle`,
 Semua kendaraan punya rute masuk dan keluar. Bus hanya melintas di
 Jalan Raya Purwodadi–Blora dan tidak masuk jalan ponpes.
 
+
+## Tombol "Lokasi saya" (GPS pengguna)
+
+Di halaman peta ada tombol **📍 Lokasi saya**. Cara kerjanya:
+
+1. Browser meminta izin lokasi (wajib **HTTPS** — GitHub Pages sudah HTTPS).
+2. Setelah diizinkan, muncul titik merah di posisi pengguna.
+3. Peta menggambar **garis putus-putus merah** dari posisi pengguna ke
+   titik sambung rute — dipilih otomatis ujung rute yang paling dekat.
+4. Panel legend menampilkan jarak ke rute, arah mata angin, sisa perjalanan,
+   dan total perkiraan.
+
+Catatan penting:
+- Titik sambung dipilih dari **dua ujung polyline rute**, bukan titik
+  terdekat di sepanjang garis. Untuk acara haul ini cukup, karena pengunjung
+  datang dari jalan raya (ujung awal) atau sudah di area ponpes (ujung akhir).
+- Rute di dalam JSON selalu dibaca dari ujung awal ke ujung tujuan; kalau
+  pengguna lebih dekat ke ujung tujuan, garis penghubung tetap digambar dan
+  sisa perjalanan dihitung dari ujung itu.
+- Kalau izin ditolak, muncul pesan jelas di panel legend dan peta tetap
+  berfungsi normal tanpa GPS.
+- Posisi pengguna tidak dikirim ke server mana pun — semua perhitungan
+  terjadi di browser.
+
+### Menguji tanpa GPS asli
+
+Buka DevTools → tiga titik → **More tools → Sensors → Location**,
+isi koordinat manual (misal `-7.0592, 111.1749`), lalu klik tombol lokasi.
+
 ## Catatan rute
 
 Rute digambar manual mengikuti geometri jalan OpenStreetMap. Jalur masuk
@@ -96,5 +125,5 @@ bertabrakan.
 npm test
 ```
 
-Menjalankan 24 test: 13 test logika `core.mjs` + 11 test integritas
-`data/routes.json`.
+Menjalankan 37 test: 13 test logika rute, 11 test integritas data,
+dan 13 test geolocation (`test/geo.test.mjs`).

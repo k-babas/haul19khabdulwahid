@@ -1,12 +1,15 @@
 import {
   pickRoutes, pickParking, buildTimeOptions, validateData, routeBounds,
-  toLineString, toPolygon
+  toLineString, toPolygon, haversineKm, bearingDeg, pickEntryEnd, formatDistance
 } from './core.mjs';
 
 const el = id => document.getElementById(id);
 const DARK = '#0f172a';
 
-const state = { data: null, map: null, markers: [], is3D: false, ready: false };
+const state = {
+  data: null, map: null, markers: [], is3D: false, ready: false,
+  userPos: null, userMarker: null, userLayerReady: false
+};
 window.__haul = state;  // untuk diagnosa & test
 
 const emptyFC = () => ({ type: 'FeatureCollection', features: [] });
@@ -97,6 +100,7 @@ async function boot() {
   el('time-select').addEventListener('change', render);
   el('reset-btn').addEventListener('click', reset);
   el('tilt-btn').addEventListener('click', toggle3D);
+  el('locate-btn').addEventListener('click', locateUser);
 
   // Editor dipasang setelah map siap; tidak memakai event 'load' karena
   // event itu tidak selalu fire di environment ini.
@@ -212,11 +216,28 @@ function ensureLayers() {
       paint: { 'line-color': '#f59e0b', 'line-width': 2 }
     });
   }
+
+  // Garis putus-putus dari posisi user ke titik sambung rute.
+  if (!m.getSource('user-link')) {
+    m.addSource('user-link', { type: 'geojson', data: emptyFC() });
+  }
+  if (!m.getLayer('user-link-line')) {
+    m.addLayer({
+      id: 'user-link-line', type: 'line', source: 'user-link',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#dc2626', 'line-width': 3, 'line-opacity': 0.85,
+        'line-dasharray': [2, 2]
+      }
+    });
+  }
+  state.userLayerReady = true;
 }
 
 function onVehicleChange() {
   const vehicleId = el('vehicle-select').value;
   const ts = el('time-select');
+  const previous = ts.value;
   ts.innerHTML = '<option value="">— pilih —</option>';
   const opts = buildTimeOptions(state.data, vehicleId);
   for (const t of opts) {
@@ -225,7 +246,14 @@ function onVehicleChange() {
     o.textContent = t.label;
     ts.appendChild(o);
   }
-  if (opts.length === 1) ts.value = opts[0].id;
+  // Pertahankan pilihan waktu kalau slot itu masih ada untuk kendaraan baru.
+  if (previous && opts.some(t => t.id === previous)) {
+    ts.value = previous;
+  } else if (opts.length === 1) {
+    ts.value = opts[0].id;
+  } else {
+    ts.value = '';
+  }
   render();
 }
 
@@ -250,6 +278,15 @@ function render() {
     el('status').textContent = 'Pilih tipe kendaraan dan waktu untuk melihat rute.';
     el('status').classList.remove('error');
     legend.hidden = true;
+    clearUserLink();
+    if (state.userPos) {
+      const ev2 = state.data.event.location;
+      setLocateInfo(
+        'Posisi Anda terdeteksi. Jarak ke lokasi haul ±' +
+        formatDistance(haversineKm(state.userPos, [ev2.lat, ev2.lng])) +
+        '. Pilih tipe kendaraan dan waktu untuk melihat titik sambung rute.'
+      );
+    }
     resetCamera();
     return;
   }
@@ -316,6 +353,7 @@ function render() {
   legend.hidden = false;
 
   fitToResults(routes, parking);
+  linkUserToRoutes(routes);
 }
 
 function fitToResults(routes, parking) {
@@ -339,6 +377,141 @@ function resetCamera() {
     pitch: state.is3D ? 45 : 0,
     bearing: state.is3D ? -20 : 0
   });
+}
+
+
+// ---------- Geolocation ----------
+
+function setLocateInfo(text, isError) {
+  const box = el('locate-info');
+  box.hidden = !text;
+  box.textContent = text || '';
+  box.classList.toggle('error', !!isError);
+}
+
+function ensureUserMarker(lat, lng) {
+  if (!state.userMarker) {
+    const wrap = document.createElement('div');
+    wrap.className = 'user-dot';
+    wrap.title = 'Posisi Anda';
+    state.userMarker = new maplibregl.Marker({ element: wrap, anchor: 'center' })
+      .setLngLat([lng, lat])
+      .addTo(state.map);
+  } else {
+    state.userMarker.setLngLat([lng, lat]);
+  }
+}
+
+function clearUserLink() {
+  if (!state.userLayerReady) return;
+  const src = state.map.getSource('user-link');
+  if (src) src.setData(emptyFC());
+}
+
+// Sambungkan posisi user ke rute terpilih: pilih ujung rute yang paling
+// dekat, gambar garis putus-putus, dan laporkan jarak + arah.
+function linkUserToRoutes(routes) {
+  if (!state.userLayerReady || !state.userPos) return clearUserLink();
+  if (!routes || routes.length === 0) return clearUserLink();
+
+  const inbound = routes.find(r => r.direction === 'in') || routes[0];
+  const entry = pickEntryEnd(inbound, state.userPos);
+  if (!entry) return clearUserLink();
+
+
+  const [uLat, uLng] = state.userPos;
+  const [eLat, eLng] = entry.coord;
+
+  state.map.getSource('user-link').setData({
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'LineString', coordinates: [[uLng, uLat], [eLng, eLat]] }
+    }]
+  });
+
+  const brg = bearingDeg(state.userPos, entry.coord);
+  const dir = bearingToCompass(brg);
+  const sisa = formatDistance(entry.lengthKm);
+  const total = formatDistance(entry.distanceKm + entry.lengthKm);
+
+  if (entry.distanceKm < 0.05) {
+    setLocateInfo(
+      `Anda sudah di jalur rute. Ikuti garis sampai tujuan, ` +
+      `sisa ±${sisa}.`
+    );
+  } else {
+    setLocateInfo(
+      `Jarak Anda ke rute ±${formatDistance(entry.distanceKm)} ` +
+      `(arah ${dir}). Sambung di titik merah, lalu ikuti garis: ` +
+      `sisa ±${sisa}, total ±${total}.`
+    );
+  }
+}
+
+function bearingToCompass(deg) {
+  const names = ['utara', 'timur laut', 'timur', 'tenggara',
+                 'selatan', 'barat daya', 'barat', 'barat laut'];
+  return names[Math.round(deg / 45) % 8];
+}
+
+function locateUser() {
+  if (!state.ready) {
+    setLocateInfo('Peta belum siap. Coba lagi sebentar.', true);
+    return;
+  }
+  if (!navigator.geolocation) {
+    setLocateInfo('Browser ini tidak mendukung deteksi lokasi.', true);
+    return;
+  }
+
+  const btn = el('locate-btn');
+  btn.disabled = true;
+  btn.classList.add('active');
+  setLocateInfo('Mendeteksi lokasi Anda…');
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      btn.disabled = false;
+      btn.classList.remove('active');
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      state.userPos = [lat, lng];
+      ensureUserMarker(lat, lng);
+
+      const vehicleId = el('vehicle-select').value;
+      const timeId = el('time-select').value;
+      if (!vehicleId || !timeId) {
+        setLocateInfo(
+          `Posisi Anda terdeteksi (akurasi ±${Math.round(pos.coords.accuracy)} m). ` +
+          'Pilih tipe kendaraan dan waktu untuk melihat titik sambung rute.'
+        );
+      }
+      render();
+
+      const ev = state.data.event.location;
+      const toVenue = haversineKm([lat, lng], [ev.lat, ev.lng]);
+      if (!vehicleId || !timeId) {
+        setLocateInfo(
+          `Posisi Anda terdeteksi (akurasi ±${Math.round(pos.coords.accuracy)} m). ` +
+          `Jarak ke lokasi haul ±${formatDistance(toVenue)}. ` +
+          'Pilih tipe kendaraan dan waktu untuk melihat titik sambung rute.'
+        );
+      }
+    },
+    err => {
+      btn.disabled = false;
+      btn.classList.remove('active');
+      const msg = {
+        1: 'Izin lokasi ditolak. Aktifkan izin lokasi di pengaturan browser.',
+        2: 'Lokasi tidak tersedia. Cek sinyal GPS / koneksi.',
+        3: 'Deteksi lokasi melebihi batas waktu. Coba lagi.'
+      }[err.code] || ('Gagal mendeteksi lokasi: ' + err.message);
+      setLocateInfo(msg, true);
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+  );
 }
 
 function toggle3D() {
