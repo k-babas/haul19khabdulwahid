@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Peta Rute Haul ke-19 KH Abdul Wahid Zuhdi</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="bar">
+    <h1 id="event-name">Peta Rute Haul</h1>
+    <p id="event-meta" class="meta"></p>
+  </header>
+
+  <section class="controls">
+    <label>Tipe kendaraan
+      <select id="vehicle-select"><option value="">— pilih —</option></select>
+    </label>
+    <label>Waktu
+      <select id="time-select"><option value="">— pilih —</option></select>
+    </label>
+    <button id="reset-btn" type="button">Reset</button>
+    <button id="tilt-btn" type="button">3D</button>
+  </section>
+
+  <div id="status" class="status">Pilih tipe kendaraan dan waktu untuk melihat rute.</div>
+
+  <div id="map"></div>
+
+  <section id="legend" class="legend" hidden>
+    <h2>Rute</h2>
+    <ul id="legend-list"></ul>
+    <h2 id="parking-heading" hidden>Parkir</h2>
+    <p id="parking-info" class="notes"></p>
+    <p id="route-notes" class="notes"></p>
+  </section>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

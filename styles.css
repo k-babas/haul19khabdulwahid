@@ -1,0 +1,62 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.bar { padding: 12px 16px; background: #0f172a; color: #f8fafc; }
+.bar h1 { margin: 0 0 4px; font-size: 1.15rem; }
+.bar .meta { margin: 0; font-size: .8rem; opacity: .8; }
+
+.controls {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: end;
+  padding: 12px 16px; background: #fff; border-bottom: 1px solid #e2e8f0;
+}
+.controls label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; }
+.controls select {
+  min-width: 160px; padding: 8px 10px; font-size: .95rem;
+  border: 1px solid #cbd5e1; border-radius: 8px; background: #fff;
+}
+.controls button {
+  padding: 9px 14px; font-size: .9rem; border: 1px solid #cbd5e1;
+  border-radius: 8px; background: #fff; cursor: pointer;
+}
+.controls button:hover { background: #f1f5f9; }
+.controls button.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+.status { padding: 8px 16px; font-size: .85rem; color: #475569; white-space: pre-line; }
+.status.error { color: #b91c1c; font-weight: 600; }
+
+#map { flex: 1 1 auto; min-height: 60vh; }
+
+.legend {
+  padding: 12px 16px; background: #fff; border-top: 1px solid #e2e8f0;
+  font-size: .85rem;
+}
+.legend h2 { margin: 0 0 8px; font-size: .95rem; }
+.legend ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+.legend li { display: flex; align-items: center; gap: 8px; }
+.swatch { width: 22px; height: 4px; border-radius: 2px; display: inline-block; flex: none; }
+.notes { margin: 6px 0 0; color: #475569; }
+
+@media (min-width: 900px) {
+  body { flex-direction: row; flex-wrap: wrap; align-content: start; }
+  .bar { flex: 1 1 100%; }
+  .controls { flex: 1 1 100%; }
+  #map { flex: 1 1 100%; height: calc(100vh - 175px); min-height: 0; }
+  .legend {
+    position: absolute; right: 16px; top: 160px; width: 290px;
+    border: 1px solid #e2e8f0; border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(15,23,42,.12);
+  }
+  .status {
+    position: absolute; left: 16px; bottom: 16px; background: #fff;
+    border: 1px solid #e2e8f0; border-radius: 8px; max-width: 420px;
+  }
+}
