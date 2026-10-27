@@ -68,8 +68,8 @@ test('data: dropdown slot tiap kendaraan tidak kosong', async () => {
 test('data: lokasi event mendekati ponpes', async () => {
   const d = await load();
   const { lat, lng } = d.event.location;
-  assert.ok(Math.abs(lat - -7.0606737) < 0.01, 'lat event melenceng');
-  assert.ok(Math.abs(lng - 111.1560657) < 0.01, 'lng event melenceng');
+  assert.ok(Math.abs(lat - -7.0512508) < 0.01, 'lat event melenceng');
+  assert.ok(Math.abs(lng - 111.1699951) < 0.01, 'lng event melenceng');
 });
 
 test('data: bus tidak sampai ponpes (tetap di jalan raya)', async () => {
